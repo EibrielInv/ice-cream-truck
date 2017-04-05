@@ -18,22 +18,6 @@ The bot will use the included pre trained model, if you want to train your own r
 Interaction example:
 
 ```
-Welcome to the End-to-End Ice Cream Truck, please place your order.
-I understand the following commands:
-add flavor / i would like flavor / i want flavor
-To select a new flavor
-
-remove flavor / i dont want flavor
-To remove a selected flavor
-
-change flavor for flavor
-To change one flavor to another
-
-done - To print your current order
-quit - To exit
-
-Today flavors: chocolate - lemon - cherry - coffee
-
 >add chocolate
 >change chocolate for cherry
 >add coffee
@@ -41,11 +25,6 @@ Today flavors: chocolate - lemon - cherry - coffee
 
 
 Your order: cherry, coffee 🍦
-
-(restarting order)
-
-
->quit
 ```
 
 ## Telegram interface
