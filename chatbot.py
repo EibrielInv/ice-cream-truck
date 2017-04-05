@@ -17,6 +17,10 @@ from keras.layers.embeddings import Embedding
 
 from helpers import *
 
+from telegram import telegram
+
+from config import Config
+
 generate_dataset = True
 
 if generate_dataset:
@@ -39,15 +43,16 @@ if generate_dataset:
         'coffee'
     ]
     generated_dataset = []
-    stories_count = 20000
+    stories_count = 40000
     for n in range(stories_count):
         is_flavor = [False, False, False, False]
         sentences = []
         for n in range(rd.randint(1, 6)):
-            if n > 1:
-                random_action = rd.randint(0, 2)
-            else:
-                random_action = 0 # always add first
+            #if n > 0:
+            #    random_action = rd.randint(0, 2)
+            #else:
+            #    random_action = 0 # always add first
+            random_action = rd.randint(0, 2)
             random_flavor = rd.randint(0, 3)
             random_flavor_b = rd.randint(0, 3)
             if random_action==0: #add
@@ -242,30 +247,8 @@ if 0:
         current_index += 1
         input("next?")
 
-input_text = ""
-print ("\n\nWelcome to the End-to-End Ice Cream Truck, please place your order.")
-print ("I understand the following commands:")
-print ("add [flavor] / i would like [flavor] / i want [flavor] - To select a new flavor")
-print ("remove [flavor] / i dont want [flavor] - To remove a selected flavor")
-print ("change [flavor] for [flavor] - To change one flavor to another")
-print ("done - To print your current order")
-print ("quit - To exit")
-print ("\nToday flavors: chocolate - lemon - cherry - coffee\n")
 
-while 1:
-    story = []
-    while 1:
-        input_text = input(">")
-        if input_text in ["done", "quit"]:
-            break
-        sentence = input_text.split(" ")
-        if sentence[-1] != ".":
-            sentence.append(".")
-        story = story + sentence
-    if input_text == "quit":
-        break
-
-
+def order_from_story(story):
     story_int = [0 for n in range(30-len(story))]
     story_int = story_int + [word_idx[word] for word in story]
 
@@ -277,4 +260,97 @@ while 1:
         if vocab[np.argmax(prediction)-1]=="yes":
             order.append(f)
     order = ", ".join(order)
-    print ("Your order: {}\n\n(restarting order)\n\n".format(order))
+    return "Your order: *{}* 🍦\n\n(restarting order)\n\n".format(order)
+
+def send_to_telegram(chat_id, answer):
+    msg = {
+            'chat_id': chat_id,
+            'parse_mode': 'Markdown',
+            'text': answer,
+        }
+    r = telegram_conection.send_to_bot('sendMessage', data = msg)
+
+def known_words(sentence):
+    for word in sentence:
+        if not word in word_idx or word in ["order", "yes", "no", "is", "in", "the"]:
+            return False
+    return True
+
+welcome_text = """
+
+*Welcome to the End-to-End Ice Cream Truck, please place your order.*
+I understand the following commands:
+*add flavor* / *i would like flavor* / *i want flavor*
+To select a new flavor
+*remove flavor* / *i dont want flavor*
+To remove a selected flavor
+*change flavor for flavor*
+To change one flavor to another
+*done* - To print your current order
+*quit* - To exit
+
+Today flavors: _chocolate_ - _lemon_ - _cherry_ - _coffee_
+"""
+
+ui="cli"
+if ui=="cli":
+    input_text = ""
+    print (welcome_text)
+    while 1:
+        story = []
+        while 1:
+            input_text = input(">")
+            if input_text in ["done", "quit", "order"]:
+                break
+            sentence = input_text.split(" ")
+            if sentence[-1] != ".":
+                sentence.append(".")
+            if not known_words(sentence):
+                print ("Unknown command")
+                continue
+            story = story + sentence
+        if input_text == "quit":
+            break
+        print ("\n")
+        print (order_from_story(story))
+
+elif ui=="telegram":
+    telegram_conection = telegram("eibriel_icecream_bot", Config.telegram_token, "8979")
+    chat_history = {}
+    while 1:
+        telegram_conection.open_session()
+        r = telegram_conection.get_update()
+        if not r:
+            continue
+        r_json = r.json()
+        telegram_conection.close_session()
+        for result in r_json["result"]:
+            answer = ""
+            if not ("message" in result and "text" in result["message"]):
+                continue
+            chat_id = result["message"]["chat"]["id"]
+            sentence = result["message"]["text"].lower()
+
+            if sentence == "/restart":
+                chat_history[chat_id] = []
+                send_to_telegram(chat_id, "Order restarted")
+                continue
+
+            if sentence in ["done", "quit", "order"]:
+                answer = order_from_story(chat_history[chat_id])
+                send_to_telegram(chat_id, answer)
+                chat_history[chat_id] = []
+                continue
+
+            sentence = sentence.split(" ")
+            if sentence[-1] != ".":
+                sentence.append(".")
+
+            if not known_words(sentence):
+                send_to_telegram(chat_id, welcome_text)
+                continue
+
+            if not chat_id in chat_history:
+                chat_history[chat_id] = []
+            chat_history[chat_id] += sentence
+            send_to_telegram(chat_id, "Ok!")
