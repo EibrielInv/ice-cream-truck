@@ -1,4 +1,20 @@
+'''Trains a memory network on the bAbI dataset.
+References:
+- Jason Weston, Antoine Bordes, Sumit Chopra, Tomas Mikolov, Alexander M. Rush,
+  "Towards AI-Complete Question Answering: A Set of Prerequisite Toy Tasks",
+  http://arxiv.org/abs/1502.05698
+- Sainbayar Sukhbaatar, Arthur Szlam, Jason Weston, Rob Fergus,
+  "End-To-End Memory Networks",
+  http://arxiv.org/abs/1503.08895
+Reaches 98.6% accuracy on task 'single_supporting_fact_10k' after 120 epochs.
+Time per epoch: 3s on CPU (core i7).
+
+Code by Eibriel, Siraj Raval and fchollet.
+
+'''
+
 import os
+import sys
 import random as rd
 
 from keras.layers import add
@@ -19,7 +35,10 @@ from helpers import *
 
 from telegram import telegram
 
-from config import Config
+try:
+    from config import Config
+except:
+    print ("Missing config.py, no Telegram support")
 
 generate_dataset = True
 
@@ -282,20 +301,27 @@ welcome_text = """
 I understand the following commands:
 *add flavor* / *i would like flavor* / *i want flavor*
 To select a new flavor
+
 *remove flavor* / *i dont want flavor*
 To remove a selected flavor
+
 *change flavor for flavor*
 To change one flavor to another
+
 *done* - To print your current order
 *quit* - To exit
 
 Today flavors: _chocolate_ - _lemon_ - _cherry_ - _coffee_
 """
 
-ui="cli"
+if "telegram" in sys.argv:
+    ui="telegram"
+else:
+    ui="cli"
+
 if ui=="cli":
     input_text = ""
-    print (welcome_text)
+    print (welcome_text.replace("*", "").replace("_", ""))
     while 1:
         story = []
         while 1:
@@ -311,8 +337,10 @@ if ui=="cli":
             story = story + sentence
         if input_text == "quit":
             break
+        if len(story) == 0:
+            continue
         print ("\n")
-        print (order_from_story(story))
+        print (order_from_story(story).replace("*", "").replace("_", ""))
 
 elif ui=="telegram":
     telegram_conection = telegram("eibriel_icecream_bot", Config.telegram_token, "8979")
@@ -337,6 +365,10 @@ elif ui=="telegram":
                 continue
 
             if sentence in ["done", "quit", "order"]:
+                if chat_id not in chat_history:
+                    continue
+                if len(chat_history[chat_id]) == 0:
+                    continue
                 answer = order_from_story(chat_history[chat_id])
                 send_to_telegram(chat_id, answer)
                 chat_history[chat_id] = []
