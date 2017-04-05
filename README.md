@@ -59,3 +59,7 @@ In order to use a Telegram bot as your interface:
 - Run the chatbot with the following parameter `python chatbot.py telegram`
 
 Done! You can now add your bot to your contacts and order your Ice Cream
+
+My demo on Telegram: https://t.me/eibriel_icecream_bot
+
+![Telegram Demo](telegram.jpg)
