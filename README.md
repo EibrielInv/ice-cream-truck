@@ -6,7 +6,9 @@ Entry for machine learning tutorial [How to Make a Chatbot - Intro to Deep Learn
 
 ## Dependencies
 - python 3
+- tensorflow
 - keras
+- h5py (For saving and loading the model)
 - requests (For Telegram support)
 
 ## Running 
