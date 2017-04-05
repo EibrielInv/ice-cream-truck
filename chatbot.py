@@ -36,81 +36,73 @@ from helpers import *
 from telegram import telegram
 
 try:
+    # Attempts to load Telegram configuration
     from config import Config
 except:
     print ("Missing config.py, no Telegram support")
 
-generate_dataset = True
+# Generate the dataset on the fly
 
-if generate_dataset:
-    add_commands = [
-        'add',
-        'i would like',
-        'i want'
-    ]
-    remove_commands = [
-        'remove',
-        'i dont want'
-    ]
-    change_commands = [
-        'change:for'
-    ]
-    flavors = [
-        'chocolate',
-        'lemon',
-        'cherry',
-        'coffee'
-    ]
-    generated_dataset = []
-    stories_count = 40000
-    for n in range(stories_count):
-        is_flavor = [False, False, False, False]
-        sentences = []
-        for n in range(rd.randint(1, 6)):
-            #if n > 0:
-            #    random_action = rd.randint(0, 2)
-            #else:
-            #    random_action = 0 # always add first
-            random_action = rd.randint(0, 2)
-            random_flavor = rd.randint(0, 3)
-            random_flavor_b = rd.randint(0, 3)
-            if random_action==0: #add
-                is_flavor[random_flavor] = True
-                text = "{} {} .".format(rd.choice(add_commands), flavors[random_flavor])
-            elif random_action==1: #remove
-                is_flavor[random_flavor] = False
-                text = "{} {} .".format(rd.choice(remove_commands), flavors[random_flavor])
-            elif random_action==2: #change
-                is_flavor[random_flavor] = False
-                is_flavor[random_flavor_b] = True
-                command_text = rd.choice(change_commands)
-                command_text = command_text.split(':')
-                text = "{} {} {} {} .".format(command_text[0], flavors[random_flavor], command_text[1], flavors[random_flavor_b])
-            sentences.append(text)
-        sentences = " ".join(sentences)
-        random_flavor = rd.randint(0, 3)
-        question = "is {} in the order ?".format(flavors[random_flavor])
-        answer = "yes" if is_flavor[random_flavor] else "no"
-        generated_dataset.append( (sentences.split(" "), question.split(" "), answer) )
+# Commands to add an item
+add_commands = [
+    'add',
+    'i would like',
+    'i want'
+]
+# Commands to remove an item
+remove_commands = [
+    'remove',
+    'i dont want'
+]
+# Commands to change an item for another
+change_commands = [
+    'change:for'
+]
+# List of ice cream flavors
+flavors = [
+    'chocolate',
+    'lemon',
+    'cherry',
+    'coffee'
+]
+generated_dataset = []
+# Ammount of stories to generate
+# will be splitted by half on training and testing set
+stories_count = 40000
+for n in range(stories_count):
+    is_flavor = [False, False, False, False] # Holds flavor selection status
+    sentences = []
+    for n in range(rd.randint(1, 6)):
+        random_action = rd.randint(0, 2) # Selects a random action between add, remove or change
+        random_flavor = rd.randint(0, 3) # Selects a random flavor
+        random_flavor_b = rd.randint(0, 3) # Selects a random flavor
+        if random_action==0: #add
+            is_flavor[random_flavor] = True
+            text = "{} {} .".format(rd.choice(add_commands), flavors[random_flavor])
+        elif random_action==1: #remove
+            is_flavor[random_flavor] = False
+            text = "{} {} .".format(rd.choice(remove_commands), flavors[random_flavor])
+        elif random_action==2: #change
+            is_flavor[random_flavor] = False
+            is_flavor[random_flavor_b] = True
+            command_text = rd.choice(change_commands)
+            command_text = command_text.split(':')
+            text = "{} {} {} {} .".format(command_text[0], flavors[random_flavor], command_text[1], flavors[random_flavor_b])
+        sentences.append(text)
+    sentences = " ".join(sentences)
+    random_flavor = rd.randint(0, 3) # Select a random flavor for the question
+    question = "is {} in the order ?".format(flavors[random_flavor]) # Generates the question
+    answer = "yes" if is_flavor[random_flavor] else "no" # Generates the answer
+    generated_dataset.append( (sentences.split(" "), question.split(" "), answer) )
 
-    split_idx = int(stories_count/2)
-    train_stories = generated_dataset[:split_idx]
-    test_stories = generated_dataset[split_idx:]
-else:
-    challenges = {
-        # QA1 with 10,000 samples
-        'single_supporting_fact_10k': 'data/tasks_1-20_v1-2/en-10k/qa1_single-supporting-fact_{}.txt',
-        # QA2 with 10,000 samples
-        'two_supporting_facts_10k': 'data/tasks_1-20_v1-2/en-10k/qa2_two-supporting-facts_{}.txt',
-    }
-    challenge_type = 'single_supporting_fact_10k'
-    challenge = challenges[challenge_type]
+# The dataset is divided by half for training and testing
+# Given the way the data is created the training and testing set
+# might have some duplicated stories, so the validation is not accurated
+split_idx = int(stories_count/2)
+train_stories = generated_dataset[:split_idx]
+test_stories = generated_dataset[split_idx:]
 
-    print('Extracting stories for the challenge:', challenge_type)
-
-    train_stories = get_stories(open(challenge.format('train'), 'r'))
-    test_stories = get_stories(open(challenge.format('test'), 'r'))
-
+# Generates the vocabulary
 vocab = set()
 for story, q, answer in train_stories + test_stories:
     vocab |= set(story + q + [answer])
@@ -240,33 +232,7 @@ if not os.path.isfile(model_filepath):
 else:
     model.load_weights(model_filepath)
 
-#print(inputs_test[0].reshape(1, -1).shape)
-#print(queries_test[0].reshape(1, -1).shape)
-
-print ("\n\nTest")
-
-if 0:
-    current_index = 1
-    while 1:
-        print("\nStory:")
-        print(list_to_string (inputs_test[current_index], vocab).replace('.', '.\n'))
-        print("\nQuestion:")
-        print(list_to_string (queries_test[current_index], vocab))
-
-        print (inputs_test[current_index])
-        print (queries_test[current_index])
-
-        prediction = model.predict([inputs_test[current_index].reshape(1, -1), queries_test[current_index].reshape(1, -1)])
-
-        print("\nPredicted answer:")
-        #print (vocab)
-        #print (np_softmax(prediction))
-        print (vocab[np.argmax(prediction)-1])
-
-        current_index += 1
-        input("next?")
-
-
+# Returns an order, given a story
 def order_from_story(story):
     story_int = [0 for n in range(30-len(story))]
     story_int = story_int + [word_idx[word] for word in story]
@@ -281,6 +247,7 @@ def order_from_story(story):
     order = ", ".join(order)
     return "Your order: *{}* 🍦\n\n(restarting order)\n\n".format(order)
 
+# Sends a message to Telegram
 def send_to_telegram(chat_id, answer):
     msg = {
             'chat_id': chat_id,
@@ -289,6 +256,7 @@ def send_to_telegram(chat_id, answer):
         }
     r = telegram_conection.send_to_bot('sendMessage', data = msg)
 
+# Checks if a list contains only known words from the vocabulary
 def known_words(sentence):
     for word in sentence:
         if not word in word_idx or word in ["order", "yes", "no", "is", "in", "the"]:
@@ -314,24 +282,26 @@ To change one flavor to another
 Today flavors: _chocolate_ - _lemon_ - _cherry_ - _coffee_
 """
 
+# Select the proper UI (cli or telegram)
 if "telegram" in sys.argv:
     ui="telegram"
 else:
     ui="cli"
 
+# If UI is cli
 if ui=="cli":
     input_text = ""
     print (welcome_text.replace("*", "").replace("_", ""))
     while 1:
-        story = []
+        story = [] # Restart story
         while 1:
-            input_text = input(">")
-            if input_text in ["done", "quit", "order"]:
+            input_text = input(">") # Read the inpur
+            if input_text in ["done", "quit", "order"]: # If is a stop command
                 break
             sentence = input_text.split(" ")
             if sentence[-1] != ".":
                 sentence.append(".")
-            if not known_words(sentence):
+            if not known_words(sentence): # If contains unknown words
                 print ("Unknown command")
                 continue
             story = story + sentence
@@ -339,32 +309,39 @@ if ui=="cli":
             break
         if len(story) == 0:
             continue
+        # Print order
         print ("\n")
         print (order_from_story(story).replace("*", "").replace("_", ""))
-
+# if ui is Telegram
 elif ui=="telegram":
+    print ("\nListening for Telegram messages")
+    # Configure Telegram connection
     telegram_conection = telegram("eibriel_icecream_bot", Config.telegram_token, "8979")
-    chat_history = {}
+    chat_history = {} # Holds the story of the Telegram users
     while 1:
         telegram_conection.open_session()
-        r = telegram_conection.get_update()
+        r = telegram_conection.get_update() # Listen for new messages
         if not r:
-            continue
+            continue # If no messages continue loop
         r_json = r.json()
         telegram_conection.close_session()
         for result in r_json["result"]:
             answer = ""
             if not ("message" in result and "text" in result["message"]):
-                continue
-            chat_id = result["message"]["chat"]["id"]
-            sentence = result["message"]["text"].lower()
+                continue # Sanity check on the message
+
+            chat_id = result["message"]["chat"]["id"] # Get user id
+            sentence = result["message"]["text"].lower() # Get input text
+            print (sentence)
 
             if sentence == "/restart":
+                # If restart command, empty user story
                 chat_history[chat_id] = []
                 send_to_telegram(chat_id, "Order restarted")
                 continue
 
             if sentence in ["done", "quit", "order"]:
+                # If quit command print order
                 if chat_id not in chat_history:
                     continue
                 if len(chat_history[chat_id]) == 0:
@@ -374,14 +351,18 @@ elif ui=="telegram":
                 chat_history[chat_id] = []
                 continue
 
+            # Input text to list, the model expect period
+            # at the end of a sentence
             sentence = sentence.split(" ")
             if sentence[-1] != ".":
                 sentence.append(".")
 
+            # If the sentence includes unknown words abort
             if not known_words(sentence):
                 send_to_telegram(chat_id, welcome_text)
                 continue
 
+            # Add the new sentence to the story
             if not chat_id in chat_history:
                 chat_history[chat_id] = []
             chat_history[chat_id] += sentence
