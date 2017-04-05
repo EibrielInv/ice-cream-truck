@@ -1,4 +1,5 @@
 import os
+import random as rd
 
 from keras.layers import add
 from keras.layers import dot
@@ -16,10 +17,61 @@ from keras.layers.embeddings import Embedding
 
 from helpers import *
 
-generate_dataset = False
+generate_dataset = True
 
 if generate_dataset:
-    possible_steps = {}
+    add_commands = [
+        'add',
+        'i would like',
+        'i want'
+    ]
+    remove_commands = [
+        'remove',
+        'i dont want'
+    ]
+    change_commands = [
+        'change:for'
+    ]
+    flavors = [
+        'chocolate',
+        'lemon',
+        'cherry',
+        'coffee'
+    ]
+    generated_dataset = []
+    stories_count = 20000
+    for n in range(stories_count):
+        is_flavor = [False, False, False, False]
+        sentences = []
+        for n in range(rd.randint(1, 6)):
+            if n > 1:
+                random_action = rd.randint(0, 2)
+            else:
+                random_action = 0 # always add first
+            random_flavor = rd.randint(0, 3)
+            random_flavor_b = rd.randint(0, 3)
+            if random_action==0: #add
+                is_flavor[random_flavor] = True
+                text = "{} {} .".format(rd.choice(add_commands), flavors[random_flavor])
+            elif random_action==1: #remove
+                is_flavor[random_flavor] = False
+                text = "{} {} .".format(rd.choice(remove_commands), flavors[random_flavor])
+            elif random_action==2: #change
+                is_flavor[random_flavor] = False
+                is_flavor[random_flavor_b] = True
+                command_text = rd.choice(change_commands)
+                command_text = command_text.split(':')
+                text = "{} {} {} {} .".format(command_text[0], flavors[random_flavor], command_text[1], flavors[random_flavor_b])
+            sentences.append(text)
+        sentences = " ".join(sentences)
+        random_flavor = rd.randint(0, 3)
+        question = "is {} in the order ?".format(flavors[random_flavor])
+        answer = "yes" if is_flavor[random_flavor] else "no"
+        generated_dataset.append( (sentences.split(" "), question.split(" "), answer) )
+
+    split_idx = int(stories_count/2)
+    train_stories = generated_dataset[:split_idx]
+    test_stories = generated_dataset[split_idx:]
 else:
     challenges = {
         # QA1 with 10,000 samples
@@ -157,7 +209,7 @@ model_filepath = 'model.hdf5'
 if not os.path.isfile(model_filepath):
     # train
     model.fit([inputs_train, queries_train], answers_train,
-              batch_size=32,
+              batch_size=32*8,
               epochs=120,
               validation_data=([inputs_test, queries_test], answers_test))
     model.save_weights(model_filepath)
@@ -169,19 +221,60 @@ else:
 
 print ("\n\nTest")
 
-current_index = 1
+if 0:
+    current_index = 1
+    while 1:
+        print("\nStory:")
+        print(list_to_string (inputs_test[current_index], vocab).replace('.', '.\n'))
+        print("\nQuestion:")
+        print(list_to_string (queries_test[current_index], vocab))
+
+        print (inputs_test[current_index])
+        print (queries_test[current_index])
+
+        prediction = model.predict([inputs_test[current_index].reshape(1, -1), queries_test[current_index].reshape(1, -1)])
+
+        print("\nPredicted answer:")
+        #print (vocab)
+        #print (np_softmax(prediction))
+        print (vocab[np.argmax(prediction)-1])
+
+        current_index += 1
+        input("next?")
+
+input_text = ""
+print ("\n\nWelcome to the End-to-End Ice Cream Truck, please place your order.")
+print ("I understand the following commands:")
+print ("add [flavor] / i would like [flavor] / i want [flavor] - To select a new flavor")
+print ("remove [flavor] / i dont want [flavor] - To remove a selected flavor")
+print ("change [flavor] for [flavor] - To change one flavor to another")
+print ("done - To print your current order")
+print ("quit - To exit")
+print ("\nToday flavors: chocolate - lemon - cherry - coffee\n")
+
 while 1:
-    print("\nStory:")
-    print(list_to_string (inputs_test[current_index], vocab).replace('.', '.\n'))
-    print("\nQuestion:")
-    print(list_to_string (queries_test[current_index], vocab))
+    story = []
+    while 1:
+        input_text = input(">")
+        if input_text in ["done", "quit"]:
+            break
+        sentence = input_text.split(" ")
+        if sentence[-1] != ".":
+            sentence.append(".")
+        story = story + sentence
+    if input_text == "quit":
+        break
 
-    prediction = model.predict([inputs_test[current_index].reshape(1, -1), queries_test[current_index].reshape(1, -1)])
 
-    print("\nPredicted answer:")
-    #print (vocab)
-    #print (np_softmax(prediction))
-    print (vocab[np.argmax(prediction)-1])
+    story_int = [0 for n in range(30-len(story))]
+    story_int = story_int + [word_idx[word] for word in story]
 
-    current_index += 1
-    input("next?")
+    order = []
+    for f in flavors:
+        query = ["is", f, "in", "the", "order", "?"]
+        query_int = [word_idx[word] for word in query]
+        prediction = model.predict([np.array(story_int).reshape(1, -1), np.array(query_int).reshape(1, -1)])
+        if vocab[np.argmax(prediction)-1]=="yes":
+            order.append(f)
+    order = ", ".join(order)
+    print ("Your order: {}\n\n(restarting order)\n\n".format(order))
