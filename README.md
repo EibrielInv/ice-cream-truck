@@ -51,7 +51,7 @@ Your order: cherry, coffee 🍦
 ## Telegram interface
 In order to use a Telegram bot as your interface:
 
-- Install Telegram
+- Install [Telegram](https://telegram.org)
 - Add BotFather to your contancts: https://t.me/BotFather
 - Use the `/newbot` command and follow the instructions
 - On the code duplicate the file `sample_config.py` to `config.py`
