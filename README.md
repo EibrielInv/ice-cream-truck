@@ -7,7 +7,7 @@ Entry for machine learning tutorial [How to Make a Chatbot - Intro to Deep Learn
 ## Dependencies
 - python 3
 - keras
-- requests For Telegram support
+- requests (For Telegram support)
 
 ## Running 
 To run the command line interface, just type:
