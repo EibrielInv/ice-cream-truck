@@ -1,0 +1,5 @@
+keras
+tensorflow
+telegram
+requests
+h5py
