@@ -50,28 +50,34 @@ My demo on Telegram: https://t.me/eibriel_icecream_bot
 
 If you are familiar with virtualenv create a new one after cloning the repo.
 
-I am naming my env bobo:
+I am naming my env venv:
 
+Python2:
 ```bash
-virtualenv -p /usr/local/bin/python bobo
+virtualenv -p /usr/local/bin/python venv
+```
+
+Python3:
+```bash
+virtualenv -p /usr/local/bin/python3 venv
 ```
 
 If you are using bash activate your env:
 
 ```bash
-. bobo/bin/activate
+. venv/bin/activate
 ```
 
 Fish users just use the fish version.
 
 ```fish
-. bobo/bin/activate.fish
+. venv/bin/activate.fish
 ```
 
 After activating you get a similar prompt:
 
 ```fish
-(bobo) ~/c/s/ice-cream-truck (master ⚡☡=)
+(venv) ~/c/s/ice-cream-truck (master ⚡☡=)
 ```
 
 Installing libraries:
@@ -83,7 +89,7 @@ pip install -r requirements.txt
 Startung up the bot:
 
 ```fish
-(bobo) ~/c/s/ice-cream-truck (master ⚡→☡=) python chatbot.py
+(venv) ~/c/s/ice-cream-truck (master ⚡→☡=) python chatbot.py
 Using TensorFlow backend.
 Missing config.py, no Telegram support
 -
